@@ -40,108 +40,90 @@ app.get('/callback', (req,res) => {
     let code = req.query.code || null;
     let state = req.query.state || null;
     let storedState = req.cookies ? req.cookies[stateKey] : null
+    let access_token;
+    let refresh_token;
     if(state === null || state != storedState) {
         res.redirect('/#' + querystring.stringify({
             error: 'state_mismatch'
         }));
     } else {
         res.clearCookie(stateKey);
-        let authOptions = {
-            url: 'https://accounts.spotify.com/api/token', 
-            form: {
-                code,
-                redirect_uri,
-                grant_type: 'authorization_code'
-            },
+        const headers = {
             headers: {
-                'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+              Accept: 'application/json',
+              'Content-Type': 'application/x-www-form-urlencoded',
             },
-            json: true
-        };
-        request.post(authOptions, (error, response, body) => {
-            if(!error && response.statusCode === 200) {
-                let access_token = body.access_token,
-                    refresh_token = body.refresh_token;
-                    let options = {
-                        url: 'https://api.spotify.com/v1/me',
-                        headers: { 'Authorization' : 'Bearer ' + access_token},
-                        json: true
-                    }
-                    console.log('access_token -> ' + access_token);
-                    console.log('refresh_token -> ' + refresh_token);
-                    
-                    request.get(options, (error, response, body) => {
-                        console.log(body);
-                    })
+            auth: {
+              username: client_id,
+              password: client_secret,
+            },
+          };
+          const data = {
+            code,
+            redirect_uri,
+            grant_type: 'authorization_code'
+          };
+        
+          try {
+             axios.post(
+              'https://accounts.spotify.com/api/token',
+              querystring.stringify(data),
+              headers
+            )
+            .then((response) => {
+                access_token = response.data.access_token;
+                refresh_token = response.data.refresh_token;
                 res.redirect('http://localhost:3000/#' + 
-                    querystring.stringify({
-                        access_token,
-                        refresh_token
-                    }))
-                
-            } else {
+                querystring.stringify({
+                    access_token,
+                    refresh_token
+                }))
+            })
+            .catch((error))
+            {
+                console.log('error!!!'+error);
                 res.redirect('http://localhost:3000/#' + 
                     querystring.stringify({
                         error: 'invalid_token'
                     }))
             }
-        })
+          } catch (error) {
+            
+          }
     }
 });
 
-app.get('/refresh_token',(req,res) => {
-    refresh_token = req.query.refresh_token;
-    let authOptions = {
-        url: 'https://accounts.spotify.com/api/token',
-        headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))},
-        form: {
-            grant_type: 'refresh_token',
-            refresh_token
-        },
-        json: true
-    }
-
-    request.post(authOptions, (error, response, body) => {
-        if(!error && response.statusCode == 200) {
-            let access_token = body.access_token;
-            res.send({
-                'access_token' : access_token
-            })
-        }
-    })
-})
 
 app.get('/topsongs',(req,res) => {
     let result=[];
-
-    let authOptions = {
-        url: 'https://api.spotify.com/v1/me/top/tracks?',
-        headers: { 'Authorization': 'Bearer ' + req.query.token},
-        json: true
+    console.log(req.query.token);
+    const headers = {
+          headers: { 'Authorization': 'Bearer ' + req.query.token},
+          params: {
+            limit: '30'
+          }
     }
-
-    request.get(authOptions, (error, response, body) => {
-        console.log(error)
-        if(!error && response.statusCode == 200) 
-        {
-
-        
-        if(body != undefined)
-        body.items.forEach(item => {
-            let obj = {
-                artist: item.artists[0].name,
-                song: item.name
+        axios.get('https://api.spotify.com/v1/me/top/tracks?', headers)
+        .then((response) => {
+            if(response.data.items != undefined){
+                response.data.items.forEach(item => {
+                    let obj = {
+                        artist: item.artists[0].name,
+                        song: item.name,
+                        img: item.album.images[2].url
+                    }
+                    console.log('artist -> '+ item.artists[0].name);
+                    console.log('song -> ' + item.name)
+                    result.push(obj);
+                })
+                res.send({'result': result})
             }
-            console.log('artist -> '+ item.artists[0].name);
-            console.log('song -> ' + item.name)
-            result.push(obj);
         })
-        res.send({'result': result})
-    }
-    })
-
-
-})
+        .catch((err) => {
+            console.log(err);
+        })
+    
+});
 
 
 
