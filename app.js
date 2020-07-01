@@ -103,14 +103,14 @@ app.get('/topsongs',(req,res) => {
             limit: '30'
           }
     }
-        axios.get('https://api.spotify.com/v1/me/top/tracks?', headers)
+        axios.get('https://api.spotify.com/v1/me/top/artists?', headers)
         .then((response) => {
             if(response.data.items != undefined){
                 response.data.items.forEach(item => {
                     let obj = {
                         artist: item.artists[0].name,
                         song: item.name,
-                        img: item.album.images[2].url
+                        img: item.album.images[1].url
                     }
                     console.log('artist -> '+ item.artists[0].name);
                     console.log('song -> ' + item.name)
@@ -124,6 +124,43 @@ app.get('/topsongs',(req,res) => {
         })
     
 });
+
+app.get('/topartists',(req,res) => {
+    let result=[];
+    console.log(req.query.token);
+    const headers = {
+          headers: { 'Authorization': 'Bearer ' + req.query.token},
+          params: {
+            limit: '30'
+          }
+    }
+        axios.get('https://api.spotify.com/v1/me/top/artists?', headers)
+        .then((response) => {
+            if(response.data.items != undefined){
+                response.data.items.forEach(item => {
+                    let genres = item.genres.map((genre) => {
+                        if(genre.length > 1)
+                        {
+                            return genre + ' ';
+                        }
+                    })
+                    let obj = {
+                        genres,
+                        artist: item.name,
+                        img: item.images[1].url,
+                        id: item.id
+                    }
+                    result.push(obj);
+                })
+                res.send({'result': result})
+            }
+        })
+        .catch((err) => {
+            console.log(err);
+        })
+    
+});
+
 
 
 
