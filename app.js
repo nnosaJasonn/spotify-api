@@ -103,7 +103,7 @@ app.get('/topsongs',(req,res) => {
             limit: '30'
           }
     }
-        axios.get('https://api.spotify.com/v1/me/top/artists?', headers)
+        axios.get('https://api.spotify.com/v1/me/top/tracks?', headers)
         .then((response) => {
             if(response.data.items != undefined){
                 response.data.items.forEach(item => {
