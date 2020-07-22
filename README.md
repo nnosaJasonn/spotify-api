@@ -7,3 +7,5 @@ API layer for spotify playlist app. this should handle authentication and all re
     <li>top artists</li>
     <li>song data</li>
 </ul>
+
+see also : https://github.com/nnosaJasonn/spotify-client and https://github.com/nnosaJasonn/playlist-creator
