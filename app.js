@@ -179,8 +179,6 @@ app.post('/addtracks', (req,res) => {
     artists.forEach((artist) => {
         axios.get(`https://api.spotify.com/v1/artists/${artist.id}/top-tracks?`, headers)
         .then((response) => {
-
-        //    console.log(response.data.tracks);
            result = [];
            response.data.tracks.forEach((track) => {
                let obj = {
@@ -194,9 +192,6 @@ app.post('/addtracks', (req,res) => {
            console.log(artists);
            res.send({'result': artists})
     })
-
-    //    console.log(res);
-    //    return res;
     })
 })
 
