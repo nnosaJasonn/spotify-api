@@ -2,14 +2,16 @@ const express = require('express');
 const request = require('request');
 const dotenv = require('dotenv');
 const axios = require('axios');
-dotenv.config();
 const cors = require('cors');
 const querystring = require('querystring');
 var cookieParser = require('cookie-parser');
+dotenv.config();
 const client_id = process.env.client_id;
 const client_secret = process.env.client_secret;
-redirect_uri = 'http://localhost:8888/callback';
-console.log('client-id => ' +client_id);
+const redirect_uri = process.env.redirect_uri;
+const auth_endpoint = process.env.auth_endpoint;
+const scope = process.env.scopes;
+const refresh_endpoint = process.env.refresh_endpoint;
 const port = process.env.PORT || 8888;
 
 
@@ -26,11 +28,11 @@ app.get('/login', (req, res) => {
     let state = 'abcdefghijklmnop';
     res.cookie(stateKey, state);
 
-    res.redirect('https://accounts.spotify.com/authorize?' +
+    res.redirect(auth_endpoint +
     querystring.stringify({
         response_type: 'code',
-        client_id:'ff4cb947f4b34f5f816b97f5cda2e687', 
-        scope: 'user-top-read',
+        client_id, 
+        scope,
         redirect_uri: redirect_uri,
         state: state
     }))
@@ -66,7 +68,7 @@ app.get('/callback', (req,res) => {
         
           try {
              axios.post(
-              'https://accounts.spotify.com/api/token',
+              refresh_endpoint,
               querystring.stringify(data),
               headers
             )
@@ -103,7 +105,7 @@ app.get('/topsongs',(req,res) => {
             limit: '30'
           }
     }
-        axios.get('https://api.spotify.com/v1/me/top/artists?', headers)
+        axios.get('https://api.spotify.com/v1/me/top/tracks?', headers)
         .then((response) => {
             if(response.data.items != undefined){
                 response.data.items.forEach(item => {
@@ -117,6 +119,7 @@ app.get('/topsongs',(req,res) => {
                     result.push(obj);
                 })
                 res.send({'result': result})
+                console.log(result);
             }
         })
         .catch((err) => {
@@ -138,28 +141,92 @@ app.get('/topartists',(req,res) => {
         .then((response) => {
             if(response.data.items != undefined){
                 response.data.items.forEach(item => {
-                    let genres = item.genres.map((genre) => {
+                    let genres = []
+                    item.genres.forEach((genre) => {
                         if(genre.length > 1)
                         {
-                            return genre + ' ';
+                            genres.push(genre + ' ');
                         }
                     })
                     let obj = {
                         genres,
                         artist: item.name,
                         img: item.images[1].url,
-                        id: item.id
+                        id: item.id,
+                        tracks: undefined
                     }
                     result.push(obj);
                 })
+                console.log(result)
                 res.send({'result': result})
             }
         })
         .catch((err) => {
             console.log(err);
         })
-    
 });
+
+app.post('/addtracks', (req,res) => {
+    // artists = req.query.artists;
+    token = refresh(req.query.refresh);
+    const headers = {
+        headers: { 'Authorization': 'Bearer ' + token},
+        params: {
+          country: 'US'
+        }
+    }
+
+    artists.forEach((artist) => {
+        axios.get(`https://api.spotify.com/v1/artists/${artist.id}/top-tracks?`, headers)
+        .then((response) => {
+
+        //    console.log(response.data.tracks);
+           result = [];
+           response.data.tracks.forEach((track) => {
+               let obj = {
+                   album: track.album.name,
+                   id: track.id,
+                   name: track.name
+               };
+               result.push(obj);
+           })
+           artist.tracks = result;
+           console.log(artists);
+           res.send({'result': artists})
+    })
+
+    //    console.log(res);
+    //    return res;
+    })
+})
+
+
+const refresh = (refresh) => {
+    var refresh_token = refresh;
+    const headers = {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        auth: {
+          username: client_id,
+          password: client_secret,
+        },
+      };
+      const data = {
+        grant_type: 'refresh_token',
+        refresh_token: refresh_token
+      };
+  
+    axios.post("https://accounts.spotify.com/api/token", querystring.stringify(data), headers)
+    .then((response) => {
+       console.log(response.data.access_token);
+    })
+  };
+  
+
+
+
 
 
 
